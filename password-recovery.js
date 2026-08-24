@@ -2,7 +2,7 @@
   const API = 'https://azfacbrdujwadnsoasnz.supabase.co';
   const KEY = 'sb_publishable_AwJd2SUhBwiL3OMaGGhkQw_j2kycR6X';
   const ADMIN_EMAIL = 'valerkasvetlicenco@icloud.com';
-  const redirectUrl = `${location.origin}${location.pathname}`;
+  const redirectUrl = 'https://ttbeautylounge-app.pages.dev/';
 
   const byId = id => document.getElementById(id);
   const recoveryParams = new URLSearchParams(location.hash.replace(/^#/, ''));
@@ -29,7 +29,7 @@
       setMessage(messageElement, data.msg || data.error_description || 'Emailul de resetare nu a putut fi trimis.');
       return;
     }
-    setMessage(messageElement, 'Ți-am trimis un email. Deschide linkul din mesaj pentru a seta o parolă nouă.');
+    setMessage(messageElement, 'Ți-am trimis un email. Deschide linkul nou din mesaj pentru a seta o parolă nouă.');
   }
 
   function showResetPassword() {
