@@ -148,3 +148,25 @@
     document.body.appendChild(script);
   }
 })();
+
+// Privacy notice — Moldova Law 195/2024
+(() => {
+  const applyPrivacyNotice = () => {
+    const consent = document.querySelector('label.consent span');
+    if (consent) consent.innerHTML = 'Am luat cunoștință de <a href="politica-confidentialitate.html" target="_blank" rel="noopener">Politica de confidențialitate</a> și înțeleg că datele necesare programării sunt prelucrate pentru furnizarea serviciului.';
+    const welcome = document.querySelector('.welcome .location');
+    if (welcome && !document.getElementById('appPrivacyLink')) {
+      const a = document.createElement('a');
+      a.id = 'appPrivacyLink';
+      a.href = 'politica-confidentialitate.html';
+      a.target = '_blank';
+      a.rel = 'noopener';
+      a.textContent = 'Politica de confidențialitate';
+      a.style.cssText = 'display:inline-block;margin-top:10px;color:var(--gold);font-size:13px';
+      welcome.insertAdjacentElement('afterend', a);
+    }
+  };
+  applyPrivacyNotice();
+  document.addEventListener('tt-language-change', applyPrivacyNotice);
+  setTimeout(applyPrivacyNotice, 250);
+})();
