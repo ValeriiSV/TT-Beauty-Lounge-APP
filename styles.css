@@ -93,3 +93,20 @@
 .timeoff-card small{opacity:.66}
 .timeoff-card .reject{width:auto;flex:0 0 auto}
 @media(max-width:640px){.timeoff-grid{grid-template-columns:1fr}.timeoff-grid .wide{grid-column:auto}.timeoff-card{align-items:flex-start}.timeoff-card .reject{padding:9px 12px}}
+
+/* Admin nav — show all tabs, including Timp liber */
+.admin-nav{
+  display:grid!important;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  gap:8px!important;
+  overflow:visible!important;
+}
+.admin-nav button{
+  min-width:0!important;
+  width:100%!important;
+  white-space:normal!important;
+  line-height:1.15!important;
+}
+@media(min-width:760px){
+  .admin-nav{grid-template-columns:repeat(6,minmax(0,1fr))!important}
+}
