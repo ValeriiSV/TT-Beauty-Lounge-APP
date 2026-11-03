@@ -73,3 +73,23 @@
 .ios-home-icon{font-size:26px}
 .ios-install-note{margin:12px 0 16px;padding:11px 12px;border-left:3px solid var(--gold);background:rgba(211,166,83,.07);color:var(--muted);font-size:13px;line-height:1.5}
 #installApp[data-installed="true"]{display:none!important}
+
+/* Admin — Timp liber / indisponibilitate */
+.timeoff-panel,.timeoff-list-panel{margin-bottom:18px}
+.timeoff-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:18px 0}
+.timeoff-grid .wide{grid-column:1/-1}
+.timeoff-all-day{display:flex!important;align-items:center;gap:10px;min-height:52px;padding:12px 14px;border:1px solid rgba(255,255,255,.12);border-radius:14px;background:rgba(255,255,255,.035)}
+.timeoff-all-day input{width:auto!important;margin:0}
+.timeoff-warning{margin:12px 0 0;font-size:12px;line-height:1.5;opacity:.68}
+.timeoff-list-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:14px}
+.timeoff-list-head h2{margin:0 0 5px}
+.timeoff-list-head p{margin:0;opacity:.66}
+.timeoff-list-head>span{display:grid;place-items:center;min-width:36px;height:36px;border-radius:999px;background:rgba(212,171,103,.14);border:1px solid rgba(212,171,103,.28);font-weight:800}
+.timeoff-list{display:grid;gap:10px}
+.timeoff-card{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 16px;border:1px solid rgba(255,255,255,.10);border-radius:16px;background:rgba(255,255,255,.035)}
+.timeoff-card>div{display:grid;gap:3px}
+.timeoff-date{font-size:15px}
+.timeoff-range{color:#d8b476;font-weight:700}
+.timeoff-card small{opacity:.66}
+.timeoff-card .reject{width:auto;flex:0 0 auto}
+@media(max-width:640px){.timeoff-grid{grid-template-columns:1fr}.timeoff-grid .wide{grid-column:auto}.timeoff-card{align-items:flex-start}.timeoff-card .reject{padding:9px 12px}}
