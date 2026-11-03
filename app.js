@@ -1,4 +1,4 @@
-const API='https://azfacbrdujwadnsoasnz.supabase.co',KEY='sb_publishable_AwJd2SUhBwiL3OMaGGhkQw_j2kycR6X',ADMIN='valerkasvetlicenco@icloud.com',BOT='TTbeautylounge_bot';let token=sessionStorage.getItem('tt_app_token'),items=[],reviews=[],view='manual',adminBusy=false,adminRefreshTimer;const photoCache=new Map(),$=id=>document.getElementById(id),esc=s=>{const d=document.createElement('div');d.textContent=s??'';return d.innerHTML},headers=()=>({apikey:KEY,Authorization:`Bearer ${token}`,'Content-Type':'application/json'});function localDate(d=new Date()){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}function showOnly(id){['welcome','client','login','adminApp','account'].forEach(x=>$(x).hidden=x!==id);scrollTo(0,0)}function progress(n){document.querySelectorAll('.progress span').forEach((x,i)=>x.classList.toggle('active',i<n))}
+const API='https://azfacbrdujwadnsoasnz.supabase.co',KEY='sb_publishable_AwJd2SUhBwiL3OMaGGhkQw_j2kycR6X',ADMIN='valerkasvetlicenco@icloud.com',BOT='TTbeautylounge_bot';let token=sessionStorage.getItem('tt_app_token'),items=[],reviews=[],timeOffBlocks=[],view='manual',adminBusy=false,adminRefreshTimer;const photoCache=new Map(),$=id=>document.getElementById(id),esc=s=>{const d=document.createElement('div');d.textContent=s??'';return d.innerHTML},headers=()=>({apikey:KEY,Authorization:`Bearer ${token}`,'Content-Type':'application/json'});function localDate(d=new Date()){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}function showOnly(id){['welcome','client','login','adminApp','account'].forEach(x=>$(x).hidden=x!==id);scrollTo(0,0)}function progress(n){document.querySelectorAll('.progress span').forEach((x,i)=>x.classList.toggle('active',i<n))}
 function formatDuration(minutes){const n=Number(minutes)||0;if(n<60)return `${n} min`;const h=Math.floor(n/60),m=n%60;return `${h} h${m?` ${m} min`:''}`}
 function manualFormHtml(){
   const t=window.ttI18n.t;
@@ -168,11 +168,75 @@ function prefillManualFromClient(c,last=null){
   setTimeout(()=>{if($('manualName'))$('manualName').value=c.full_name||'';if($('manualPhone'))$('manualPhone').value=c.phone||'';if(last&&$('manualService')){$('manualService').value=last.service||'';$('manualHairLength').value=last.hair_length||'';$('manualPrice').value=last.quoted_price||''}},0);
 }
 
+
+function timeToMinutes(value){const parts=String(value||'00:00').slice(0,5).split(':').map(Number);return (parts[0]||0)*60+(parts[1]||0)}
+function timeOffHtml(){
+  const rows=timeOffBlocks.filter(x=>x.block_date>=localDate());
+  return `<section class="panel timeoff-panel">
+    <div class="form-intro"><i>⏸</i><div><h2>Timp liber / Indisponibilitate</h2><p>Program standard: luni–duminică, 07:00–18:00. Intervalele salvate nu vor mai putea fi rezervate.</p></div></div>
+    <div class="timeoff-grid">
+      <label><span>Data</span><input id="timeOffDate" type="date" min="${localDate()}" value="${localDate()}"></label>
+      <label class="timeoff-all-day"><input id="timeOffAllDay" type="checkbox" checked> <span>Toată ziua</span></label>
+      <label><span>De la</span><input id="timeOffStart" type="time" min="07:00" max="18:00" step="1800" value="07:00" disabled></label>
+      <label><span>Până la</span><input id="timeOffEnd" type="time" min="07:00" max="18:00" step="1800" value="18:00" disabled></label>
+      <label class="wide"><span>Motiv / notă <small>opțional</small></span><input id="timeOffNote" maxlength="180" placeholder="Ex.: zi liberă, programare personală, pauză"></label>
+    </div>
+    <button id="timeOffSaveBtn" class="full" type="button">Blochează timpul</button>
+    <p class="timeoff-warning">Programările deja existente nu se șterg automat. Dacă intervalul se suprapune cu o programare existentă, vei primi avertizare înainte de salvare.</p>
+  </section>
+  <section class="panel timeoff-list-panel">
+    <div class="timeoff-list-head"><div><h2>Indisponibilități viitoare</h2><p>Poți elimina oricând un interval și orele vor redeveni disponibile automat.</p></div><span>${rows.length}</span></div>
+    <div class="timeoff-list">${rows.length?rows.map(x=>`<article class="timeoff-card">
+      <div><b class="timeoff-date">${esc(x.block_date)}</b><span class="timeoff-range">${x.all_day?'Toată ziua · 07:00–18:00':esc(String(x.start_time).slice(0,5))+'–'+esc(String(x.end_time).slice(0,5))}</span>${x.note?`<small>${esc(x.note)}</small>`:''}</div>
+      <button type="button" class="reject" data-timeoff-delete="${esc(x.id)}">Șterge</button>
+    </article>`).join(''):'<div class="empty">Nu există timp liber planificat.</div>'}</div>
+  </section>`;
+}
+async function loadTimeOffBlocks(){
+  const r=await fetch(`${API}/rest/v1/salon_time_off?select=*&block_date=gte.${localDate()}&order=block_date.asc,start_time.asc`,{headers:headers()});
+  if(!r.ok)throw Error('Nu am putut încărca timpul liber.');
+  timeOffBlocks=await r.json();
+}
+async function saveTimeOffBlock(){
+  const date=$('timeOffDate')?.value,allDay=$('timeOffAllDay')?.checked;
+  const start=allDay?'07:00':$('timeOffStart')?.value,end=allDay?'18:00':$('timeOffEnd')?.value,note=$('timeOffNote')?.value.trim()||null;
+  if(!date||date<localDate()){$('status').textContent='Alege o dată validă.';return}
+  if(!start||!end||timeToMinutes(start)>=timeToMinutes(end)){$('status').textContent='Intervalul orar nu este valid.';return}
+  if(timeToMinutes(start)<420||timeToMinutes(end)>1080){$('status').textContent='Intervalul trebuie să fie între 07:00 și 18:00.';return}
+  const from=timeToMinutes(start),to=timeToMinutes(end);
+  const conflicts=items.filter(a=>a.preferred_date===date&&['pending','approved'].includes(a.status)).filter(a=>{
+    const aStart=timeToMinutes(a.preferred_time),aEnd=aStart+Number(a.duration_minutes||60);
+    return from<aEnd&&to>aStart;
+  });
+  if(conflicts.length&&!confirm(`Există ${conflicts.length} programare(i) în acest interval. Blocarea va opri doar rezervările noi; programările existente rămân active. Continui?`))return;
+  adminBusy=true;
+  try{
+    const r=await fetch(`${API}/rest/v1/salon_time_off`,{method:'POST',headers:{...headers(),Prefer:'return=representation'},body:JSON.stringify({block_date:date,start_time:start,end_time:end,all_day:!!allDay,note})});
+    if(!r.ok)throw Error(await r.text());
+    await loadTimeOffBlocks();
+    $('status').textContent=allDay?'Ziua a fost blocată complet.':'Intervalul a fost blocat.';
+    render();
+  }finally{adminBusy=false}
+}
+async function deleteTimeOffBlock(id){
+  const r=await fetch(`${API}/rest/v1/salon_time_off?id=eq.${encodeURIComponent(id)}`,{method:'DELETE',headers:headers()});
+  if(!r.ok)throw Error('Intervalul nu a putut fi șters.');
+  await loadTimeOffBlocks();
+  $('status').textContent='Intervalul a fost eliberat.';
+  render();
+}
+
 function card(a){const pending=a.status==='pending',price=a.quoted_price?`${Number(a.quoted_price).toFixed(0)} MDL`:'Preț nestabilit',notification=a.notification_channel==='telegram'?'Telegram':a.notification_channel==='phone'?'Telefon':'Email',photo=a.hair_photo_url?`<a href="${esc(a.hair_photo_url)}" target="_blank"><img class="booking-photo" src="${esc(a.hair_photo_url)}" alt="Fotografia părului"></a>`:'<p class="detail">Fotografie indisponibilă</p>';return `<article class="card"><div class="time">${esc(String(a.preferred_time).slice(0,5))}</div><span class="status ${esc(a.status)}">${a.status==='approved'?'Confirmată':a.status==='rejected'?'Refuzată':'În așteptare'}</span><h2>${esc(a.name)}</h2><div class="detail">${esc(a.service)} · ${formatDuration(a.duration_minutes||60)}<br>Email: ${esc(a.client_email||'Nespecificat')}<br><a href="tel:${esc(a.phone)}">${esc(a.phone)}</a><br>Notificare: ${notification}<br>Lungimea părului: ${esc(a.hair_length||'Nespecificată')}<br>Preț: ${esc(price)}${a.note?`<br>${esc(a.note)}`:''}</div>${photo}${pending?`<label class="price-label">Preț estimat (MDL)<input type="number" min="1" step="1" data-price-for="${esc(a.id)}" value="${a.quoted_price??''}" placeholder="Ex.: 850"></label><div class="actions"><button data-id="${esc(a.id)}" data-action="approved">Salvează și aprobă</button><button class="reject" data-id="${esc(a.id)}" data-action="rejected">Refuză</button></div>`:''}</article>`}
 function reviewCard(r){
 return `<article class="card"><div class="time">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</div><h2>${esc(r.name)}</h2><p class="detail">${esc(r.message)}</p><span class="status ${esc(r.status)}">${r.status==='approved'?'Publicată':r.status==='pending'?'În așteptare':'Ascunsă'}</span><div class="actions">${r.status==='pending'?`<button data-review="${esc(r.id)}" data-review-action="approve">Publică</button>`:''}${r.status==='approved'?`<button data-review="${esc(r.id)}" data-review-action="hide">Ascunde</button>`:''}<button class="reject" data-review="${esc(r.id)}" data-review-action="delete">Șterge</button></div></article>`
 }
 function render(){
+  if(view==='timeoff'){
+    $('content').innerHTML=timeOffHtml();
+    $('badge').textContent=items.filter(x=>x.status==='pending').length;
+    $('reviewsBadge').textContent=reviews.filter(x=>x.status==='pending').length;
+    return;
+  }
   if(view==='clients'){
     $('content').innerHTML=crmSelected?crmProfileHtml(crmSelected):crmListHtml();
     $('badge').textContent=items.filter(x=>x.status==='pending').length;
@@ -227,9 +291,9 @@ await load();
 adminBusy=false;
 }
 }
-function showAdmin(){showOnly('adminApp');$('date').value=localDate();view='manual';document.querySelectorAll('.admin-nav button').forEach(x=>x.classList.toggle('active',x.dataset.view==='manual'));$('date').closest('.toolbar').style.display='none';load().catch(e=>$('status').textContent=e.message);clearInterval(adminRefreshTimer);adminRefreshTimer=setInterval(()=>{const editing=document.activeElement?.matches?.('[data-price-for],#manualPrice,#manualName,#manualPhone,#manualService,#manualHairLength,#manualDate');if(view!=='manual'&&view!=='hub'&&!editing&&!adminBusy&&!document.hidden)load(true).catch(()=>{})},30000)}
+function showAdmin(){showOnly('adminApp');$('date').value=localDate();view='manual';document.querySelectorAll('.admin-nav button').forEach(x=>x.classList.toggle('active',x.dataset.view==='manual'));$('date').closest('.toolbar').style.display='none';load().catch(e=>$('status').textContent=e.message);clearInterval(adminRefreshTimer);adminRefreshTimer=setInterval(()=>{const editing=document.activeElement?.matches?.('[data-price-for],#manualPrice,#manualName,#manualPhone,#manualService,#manualHairLength,#manualDate');if(view!=='manual'&&view!=='hub'&&view!=='timeoff'&&!editing&&!adminBusy&&!document.hidden)load(true).catch(()=>{})},30000)}
 async function exportSelectedDayPdf(){const date=$('date').value,rows=items.filter(x=>x.preferred_date===date&&x.status!=='rejected').sort((a,b)=>String(a.preferred_time).localeCompare(String(b.preferred_time))),button=$('downloadPdf');if(!rows.length){$('status').textContent='Nu există programări pentru ziua selectată.';return}if(!window.TTPdf){$('status').textContent='Modulul PDF nu este disponibil. Reîncarcă aplicația.';return}adminBusy=true;button.disabled=true;button.textContent='Se pregătește PDF-ul…';$('status').textContent='Se încarcă fotografiile și se creează PDF-ul…';try{await window.TTPdf.downloadDailyAppointments(date,rows);$('status').textContent='PDF-ul a fost pregătit.'}catch(error){if(error?.name==='AbortError')$('status').textContent='Salvarea PDF-ului a fost anulată.';else $('status').textContent=error?.message||'PDF-ul nu a putut fi creat.'}finally{adminBusy=false;button.disabled=false;button.textContent='Descarcă PDF cu fotografii'}}
-$('loginForm').onsubmit=async e=>{e.preventDefault();const email=$('email').value.trim().toLowerCase();if(email!==ADMIN){$('loginMsg').textContent='Acest email nu are acces.';return}const r=await fetch(`${API}/auth/v1/token?grant_type=password`,{method:'POST',headers:{apikey:KEY,'Content-Type':'application/json'},body:JSON.stringify({email,password:$('password').value})}),d=await r.json();if(!r.ok){$('loginMsg').textContent='Email sau parolă incorectă.';return}token=d.access_token;sessionStorage.setItem('tt_app_token',token);showAdmin()};document.querySelector('.admin-nav').onclick=async e=>{const b=e.target.closest('[data-view]');if(!b)return;view=b.dataset.view;document.querySelectorAll('.admin-nav button').forEach(x=>x.classList.toggle('active',x===b));$('date').closest('.toolbar').style.display=view==='calendar'?'grid':'none';if(view==='clients'){crmSelected=null;crmTab='history';try{await loadCrmClients()}catch(error){$('status').textContent=error.message}}render()};$('date').onchange=render;$('downloadPdf').onclick=exportSelectedDayPdf;$('prev').onclick=()=>{const d=new Date($('date').value+'T12:00:00');d.setDate(d.getDate()-1);$('date').value=localDate(d);render()};$('next').onclick=()=>{const d=new Date($('date').value+'T12:00:00');d.setDate(d.getDate()+1);$('date').value=localDate(d);render()};$('content').onclick=e=>{
+$('loginForm').onsubmit=async e=>{e.preventDefault();const email=$('email').value.trim().toLowerCase();if(email!==ADMIN){$('loginMsg').textContent='Acest email nu are acces.';return}const r=await fetch(`${API}/auth/v1/token?grant_type=password`,{method:'POST',headers:{apikey:KEY,'Content-Type':'application/json'},body:JSON.stringify({email,password:$('password').value})}),d=await r.json();if(!r.ok){$('loginMsg').textContent='Email sau parolă incorectă.';return}token=d.access_token;sessionStorage.setItem('tt_app_token',token);showAdmin()};document.querySelector('.admin-nav').onclick=async e=>{const b=e.target.closest('[data-view]');if(!b)return;view=b.dataset.view;document.querySelectorAll('.admin-nav button').forEach(x=>x.classList.toggle('active',x===b));$('date').closest('.toolbar').style.display=view==='calendar'?'grid':'none';if(view==='clients'){crmSelected=null;crmTab='history';try{await loadCrmClients()}catch(error){$('status').textContent=error.message}}if(view==='timeoff'){try{await loadTimeOffBlocks()}catch(error){$('status').textContent=error.message}}render()};$('date').onchange=render;$('downloadPdf').onclick=exportSelectedDayPdf;$('prev').onclick=()=>{const d=new Date($('date').value+'T12:00:00');d.setDate(d.getDate()-1);$('date').value=localDate(d);render()};$('next').onclick=()=>{const d=new Date($('date').value+'T12:00:00');d.setDate(d.getDate()+1);$('date').value=localDate(d);render()};$('content').onclick=e=>{
 const clientCard=e.target.closest('[data-crm-client]');
 if(clientCard){loadCrmDetail(clientCard.dataset.crmClient).then(()=>{crmTab='history';render()}).catch(error=>{$('status').textContent=error.message});return}
 if(e.target.closest('[data-crm-back]')){crmSelected=null;crmTab='history';render();return}
@@ -270,7 +334,7 @@ const rb=e.target.closest('[data-crm-rebook]');if(rb&&crmSelected){const last=cr
     decide(id,action,price).catch(x=>$('status').textContent=x.message)
   }
   if(review)decideReview(review.dataset.review,review.dataset.reviewAction).catch(x=>$('status').textContent=x.message)
-};$('content').onchange=e=>{if(e.target?.id==='manualService'||e.target?.id==='manualDate')loadManualSlots()};
+};$('content').onchange=e=>{if(e.target?.id==='manualService'||e.target?.id==='manualDate')loadManualSlots();if(e.target?.id==='timeOffAllDay'){const on=e.target.checked;if($('timeOffStart'))$('timeOffStart').disabled=on;if($('timeOffEnd'))$('timeOffEnd').disabled=on}};
 $('content').onpointerdown=e=>{
   const manualTime=e.target.closest?.('[data-manual-time]');
   if(!manualTime)return;
